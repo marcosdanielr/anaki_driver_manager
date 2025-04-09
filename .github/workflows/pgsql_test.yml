@@ -23,7 +23,7 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     steps:
       - name: Checkout repository
@@ -35,17 +35,28 @@ jobs:
       - name: Install system dependencies (ODBC + PostgreSQL driver)
         run: |
           sudo apt-get update
-          sudo apt-get install -y unixodbc-dev odbc-postgresql
+          sudo apt-get install -y unixodbc unixodbc-dev odbc-postgresql psqlodbc
 
       - name: Register PostgreSQL ODBC driver
         run: |
           echo "[PostgreSQL Unicode]" | sudo tee -a /etc/odbcinst.ini
           echo "Description=PostgreSQL ODBC driver" | sudo tee -a /etc/odbcinst.ini
           echo "Driver=/usr/lib/x86_64-linux-gnu/odbc/psqlodbcw.so" | sudo tee -a /etc/odbcinst.ini
+          cat /etc/odbcinst.ini
 
       - name: Set environment variable (direct connection string)
         run: |
           echo 'TEST_DATABASE_URL=Driver={PostgreSQL Unicode};Server=localhost;Port=5432;Database=testdb;Uid=testuser;Pwd=testpass;' >> $GITHUB_ENV
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          sleep 10
+
+      - name: Test ODBC connection
+        run: |
+          echo "Testing ODBC connection..."
+          echo "SELECT 1;" | isql -v "PostgreSQL Unicode" testuser testpass || (echo "ODBC connection failed" && exit 1)
 
       - name: Install Dart dependencies
         run: dart pub get
