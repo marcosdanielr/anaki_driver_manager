@@ -33,17 +33,21 @@ jobs:
         uses: dart-lang/setup-dart@v1
 
       - name: Install dependencies
-        run: dart pub get
-
-      - name: Wait for PostgreSQL to be ready
         run: |
-          sleep 15
-          PGPASSWORD=testpass psql -h localhost -U testuser -d testdb -c "SELECT 1" || exit 1
-          echo "PostgreSQL is ready!"
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev odbc-postgresql
+          dart pub get
+      
 
-      - name: Set environment variable for database connection
+      - name: Register PostgreSQL ODBC driver
         run: |
-          echo 'DATABASE_URL=postgres://testuser:testpass@localhost:5432/testdb' >> $GITHUB_ENV
+          echo "[PostgreSQL Unicode]" | sudo tee -a /etc/odbcinst.ini
+          echo "Description=PostgreSQL ODBC driver" | sudo tee -a /etc/odbcinst.ini
+          echo "Driver=/usr/lib/x86_64-linux-gnu/odbc/psqlodbcw.so" | sudo tee -a /etc/odbcinst.ini
+
+      - name: Set environment variable (direct connection string)
+        run: |
+          echo 'TEST_DATABASE_URL=Driver={PostgreSQL Unicode};Server=localhost;Port=5432;Database=testdb;Uid=testuser;Pwd=testpass;' >> $GITHUB_ENV
 
       - name: Run tests
         run: dart test
