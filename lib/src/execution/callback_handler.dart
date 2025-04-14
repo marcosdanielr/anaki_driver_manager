@@ -1,25 +1,38 @@
 import 'dart:ffi';
-import 'package:ffi/ffi.dart';
+import 'dart:typed_data';
+import 'package:msgpack_dart/msgpack_dart.dart' as msgpack;
+import '../bindings/odbc_bindings.dart';
 
 final List<Map<String, dynamic>> resultRows = [];
-List<String>? headers;
+int? affectedRows;
 
-void _onExecuteCallback(Pointer<Utf8> line, Pointer<Void> userData) {
-  final csvLine = line.toDartString();
-  final values = csvLine.split(',');
+void _onExecuteCallback(Pointer<BinaryData> data, Pointer<Void> userData) {
+  final binaryData = data.cast<BinaryData>().ref;
+  final pointer = binaryData.data;
 
-  if (headers == null) {
-    headers = values;
-  } else {
-    final row = <String, dynamic>{};
-    for (var i = 0; i < headers!.length && i < values.length; i++) {
-      final val = int.tryParse(values[i]) ?? values[i];
-      row[headers![i]] = val;
+  final bytes = Uint8List(binaryData.len);
+  for (var i = 0; i < binaryData.len; i++) {
+    bytes[i] = (pointer + i).value;
+  }
+
+  try {
+    final decoded = msgpack.deserialize(bytes);
+    print('Decoded data type: ${decoded.runtimeType}');
+    print('Decoded data: $decoded');
+
+    if (decoded is Map) {
+      resultRows.add(Map<String, dynamic>.from(decoded));
+      return;
     }
-    resultRows.add(row);
+
+    if (decoded is List && decoded.isNotEmpty) {
+      affectedRows = int.parse(decoded[0].toString());
+    }
+  } catch (e) {
+    print('Error decoding MessagePack data: $e');
   }
 }
 
 final callbackPointer =
-    Pointer.fromFunction<Void Function(Pointer<Utf8>, Pointer<Void>)>(
+    Pointer.fromFunction<Void Function(Pointer<BinaryData>, Pointer<Void>)>(
         _onExecuteCallback);

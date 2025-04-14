@@ -3,6 +3,13 @@ import 'package:ffi/ffi.dart';
 
 final DynamicLibrary lib = DynamicLibrary.open("odbc.so");
 
+@Packed(8)
+final class BinaryData extends Struct {
+  external Pointer<Uint8> data;
+  @IntPtr()
+  external int len;
+}
+
 typedef _CreateConnectionC = Pointer<Void> Function();
 final createConnection =
     lib.lookupFunction<_CreateConnectionC, Pointer<Void> Function()>(
@@ -18,7 +25,7 @@ final connect =
     lib.lookupFunction<_ConnectC, int Function(Pointer<Void>, Pointer<Utf8>)>(
         'odbc_connect');
 
-typedef _ExecuteCallback = Void Function(Pointer<Utf8>, Pointer<Void>);
+typedef _ExecuteCallback = Void Function(Pointer<BinaryData>, Pointer<Void>);
 typedef _ExecuteC = Int32 Function(
   Pointer<Void>,
   Pointer<Utf8>,

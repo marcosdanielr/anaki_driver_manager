@@ -16,9 +16,10 @@ void main() {
 
       final result = await executor.execute("SELECT 1 AS id, 'test' AS name");
 
-      expect(result.length, equals(1), reason: 'Result should contain one row');
-      expect(result[0], containsPair('id', 1), reason: 'ID should be 1');
-      expect(result[0], containsPair('name', 'test'),
+      expect(result.rows.length, equals(1),
+          reason: 'Result should contain one row');
+      expect(result.rows[0], containsPair('id', 1), reason: 'ID should be 1');
+      expect(result.rows[0], containsPair('name', 'test'),
           reason: 'Name should be "test"');
 
       conn.close();
